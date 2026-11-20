@@ -1,0 +1,74 @@
+
+.shop-location-picker {
+  display: grid;
+  gap: 13px;
+  margin-top: 18px;
+}
+
+.shop-map-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.shop-map-toolbar strong {
+  color: #263746;
+  font-size: 14px;
+}
+
+.shop-map-toolbar p {
+  margin: 5px 0 0;
+  color: #788695;
+  font-size: 12px;
+}
+
+.shop-current-location-btn {
+  padding: 10px 14px;
+  border: 1px solid #ed812b;
+  border-radius: 9px;
+  color: #c9671c;
+  background: #fff2e7;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shop-current-location-btn:hover {
+  background: #ffe5d0;
+}
+
+.shop-location-map {
+  width: 100%;
+  height: 380px;
+  z-index: 1;
+  border: 1px solid #e1e7ec;
+  border-radius: 12px;
+}
+
+.shop-coordinate-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 12px;
+  border-radius: 9px;
+  background: #f6f8fa;
+  color: #667687;
+  font-size: 12px;
+}
+
+.shop-coordinate-display strong {
+  color: #263746;
+}
+
+@media (max-width: 600px) {
+  .shop-location-map {
+    height: 300px;
+  }
+
+  .shop-map-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

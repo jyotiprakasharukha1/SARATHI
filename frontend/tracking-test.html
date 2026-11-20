@@ -1,0 +1,227 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SARATHI Tracking Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 750px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #f4f6f9;
+      color: #172033;
+    }
+    section {
+      background: white;
+      padding: 18px;
+      margin: 15px 0;
+      border-radius: 10px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      cursor: pointer;
+      background: #172033;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+    }
+    #log {
+      background: #101827;
+      color: #b9f6ca;
+      padding: 15px;
+      min-height: 150px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <h1>SARATHI Live Tracking Test</h1>
+  <p id="connection">Not connected</p>
+
+  <section>
+    <h3>1. Connect using your logged-in account</h3>
+    <button id="connect">Connect Socket.IO</button>
+    <button id="disconnect">Disconnect</button>
+  </section>
+
+  <section>
+    <h3>2. Load assigned orders (delivery partner only)</h3>
+    <button id="loadOrders">Load My Assigned Orders</button>
+  </section>
+
+  <section>
+    <h3>3. Test order tracking</h3>
+    <input id="orderId" placeholder="Paste your order ID here" />
+    <button id="joinOrder">Join Customer Order Tracking</button>
+  </section>
+
+  <section>
+    <h3>4. Send a test GPS location (delivery partner only)</h3>
+    <input id="latitude" type="number" step="any" placeholder="Latitude" value="20.2961" />
+    <input id="longitude" type="number" step="any" placeholder="Longitude" value="85.8245" />
+    <button id="sendLocation">Send Test Location</button>
+  </section>
+
+  <section>
+    <h3>Activity log</h3>
+    <div id="log">Waiting for test...</div>
+  </section>
+
+  <script type="module">
+    import { io } from "socket.io-client";
+
+    let socket = null;
+
+    const logElement = document.getElementById("log");
+    const connectionElement = document.getElementById("connection");
+
+    function log(message, data) {
+      const line = data
+        ? `${message}\n${JSON.stringify(data, null, 2)}`
+        : message;
+
+      logElement.textContent += `\n\n${new Date().toLocaleTimeString()} - ${line}`;
+    }
+
+    function getToken() {
+      return sessionStorage.getItem("sarathiToken");
+    }
+
+    document.getElementById("connect").onclick = () => {
+      const token = getToken();
+
+      if (!token) {
+        log("No SARATHI login token found. Log in first.");
+        return;
+      }
+
+      if (socket?.connected) {
+        log("Already connected.");
+        return;
+      }
+
+      socket = io("http://localhost:5000", {
+        auth: { token },
+        transports: ["websocket", "polling"]
+      });
+
+      socket.on("connect", () => {
+        connectionElement.textContent = `Connected: ${socket.id}`;
+        log("Socket.IO connection successful.");
+      });
+
+      socket.on("connect_error", (error) => {
+        connectionElement.textContent = "Connection failed";
+        log("Socket connection error: " + error.message);
+      });
+
+      socket.on("disconnect", (reason) => {
+        connectionElement.textContent = "Disconnected";
+        log("Socket disconnected: " + reason);
+      });
+
+      socket.on("tracking-error", (data) => {
+        log("Tracking error", data);
+      });
+
+      socket.on("tracking-joined", (data) => {
+        log("Customer joined order tracking", data);
+      });
+
+      socket.on("order-location-updated", (data) => {
+        log("CUSTOMER RECEIVED ORDER LOCATION", data);
+      });
+
+      socket.on("fleet-location-updated", (data) => {
+        log("ADMIN RECEIVED FLEET LOCATION", data);
+      });
+
+      socket.on("location-update-confirmed", (data) => {
+        log("LOCATION UPDATE ACCEPTED", data);
+      });
+    };
+
+    document.getElementById("disconnect").onclick = () => {
+      socket?.disconnect();
+      socket = null;
+      connectionElement.textContent = "Disconnected";
+      log("Disconnected manually.");
+    };
+
+    document.getElementById("loadOrders").onclick = async () => {
+      const token = getToken();
+
+      if (!token) {
+        log("Log in first.");
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "http://localhost:5000/api/orders/delivery/assigned",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+
+        const data = await response.json();
+        log("Assigned orders API response", data);
+      } catch (error) {
+        log("Unable to load assigned orders: " + error.message);
+      }
+    };
+
+    document.getElementById("joinOrder").onclick = () => {
+      const orderId = document.getElementById("orderId").value.trim();
+
+      if (!socket?.connected) {
+        log("Connect Socket.IO first.");
+        return;
+      }
+
+      if (!orderId) {
+        log("Enter an order ID.");
+        return;
+      }
+
+      socket.emit("join-order-tracking", orderId);
+      log("Sent order tracking join request.");
+    };
+
+    document.getElementById("sendLocation").onclick = () => {
+      const orderId = document.getElementById("orderId").value.trim();
+      const latitude = Number(document.getElementById("latitude").value);
+      const longitude = Number(document.getElementById("longitude").value);
+
+      if (!socket?.connected) {
+        log("Connect Socket.IO first.");
+        return;
+      }
+
+      if (!orderId) {
+        log("Enter the assigned order ID.");
+        return;
+      }
+
+      socket.emit("delivery-location-update", {
+        orderId,
+        latitude,
+        longitude
+      });
+
+      log("Sent test location update.");
+    };
+  </script>
+</body>
+</html>
